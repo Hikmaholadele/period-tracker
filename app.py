@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, session, redirect,url_for
 
 app = Flask(__name__)
 
@@ -9,6 +9,15 @@ def home():
 @app.route("/login")
 def login():
     return render_template("login.html")
+
+@app.route("/register")
+def register():
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
 app.run(debug=True)
 
