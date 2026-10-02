@@ -66,19 +66,19 @@ period-tracker/
 │   └── history.html
 │
 └── static/
-    ├── css/
-    │   └── style.css
-    │
+    ├── style.css
+    ├── history.css
     └── js/
         └── script.js
 ```
+
 
 ## Installation
 
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/your-username/period-tracker.git
+git clone https://github.com/itunumide/period-tracker.git
 ```
 
 ### 2. Navigate to the project directory
