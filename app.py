@@ -1,4 +1,4 @@
-from flask import Flask, render_template, session, redirect,url_for
+from flask import Flask, render_template, session, redirect, url_for
 
 app = Flask(__name__)
 
@@ -19,8 +19,12 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-app.run(debug=True)
-
 @app.route("/dashboard")
 def dashboard():
     return render_template("dashboard.html")
+
+@app.route("/history")
+def history():
+    return render_template("history.html")
+
+app.run(debug=True)
