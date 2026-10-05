@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Log Period</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main class="page">
+        <h1>Log a period</h1>
+        <nav><a href="{{ url_for('home') }}">&larr; Back to summary</a></nav>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                    {% for category, message in messages %}
+                        <li class="flash flash-{{ category }}">{{ message }}</li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+        {% endwith %}
+
+        <form method="post" class="card period-form">
+            <div class="field">
+                <label for="start_date">Start date</label>
+                <input type="date" id="start_date" name="start_date" required
+                       value="{{ request.form.get('start_date', '') }}">
+            </div>
+
+            <div class="field">
+                <label for="end_date">End date <span class="hint">(optional)</span></label>
+                <input type="date" id="end_date" name="end_date"
+                       value="{{ request.form.get('end_date', '') }}">
+            </div>
+
+            <fieldset class="field">
+                <legend>Flow</legend>
+                {% for level in flow_levels %}
+                    <label class="chip">
+                        <input type="radio" name="flow" value="{{ level }}"
+                               {% if request.form.get('flow', '') == level %}checked{% endif %}>
+                        <span>{{ level|capitalize }}</span>
+                    </label>
+                {% endfor %}
+            </fieldset>
+
+            <fieldset class="field">
+                <legend>Symptoms</legend>
+                {% set selected = request.form.getlist('symptoms') %}
+                <div class="chips">
+                    {% for symptom in symptoms %}
+                        <label class="chip">
+                            <input type="checkbox" name="symptoms" value="{{ symptom }}"
+                                   {% if symptom in selected %}checked{% endif %}>
+                            <span>{{ symptom|capitalize }}</span>
+                        </label>
+                    {% endfor %}
+                </div>
+            </fieldset>
+
+            <div class="field">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" rows="4"
+                          placeholder="Anything worth remembering...">{{ request.form.get('notes', '') }}</textarea>
+            </div>
+
+            <button type="submit" class="btn">Save period</button>
+        </form>
+
+        <section class="insights">
+            <h2>Your averages</h2>
+            <ul class="stats">
+                <li><span class="stat-value">{{ insights.avg_cycle }}</span> avg cycle length</li>
+                <li><span class="stat-value">{{ insights.avg_period }}</span> avg period length</li>
+                {% if insights.next_start %}
+                    <li><span class="stat-value">{{ insights.next_start.isoformat() }}</span> next expected period</li>
+                {% endif %}
+            </ul>
+        </section>
+
+        <section class="history">
+            <h2>History</h2>
+            {% if periods %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Start</th>
+                            <th>End</th>
+                            <th>Flow</th>
+                            <th>Symptoms</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for period in periods %}
+                            <tr>
+                                <td>{{ period.start_date }}</td>
+                                <td>{{ period.end_date or '—' }}</td>
+                                <td>{{ period.flow|capitalize }}</td>
+                                <td>{{ period.symptoms or '—' }}</td>
+                                <td>{{ period.notes or '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p class="empty">Nothing logged yet. Your first entry sets the baseline.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
