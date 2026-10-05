@@ -1,4 +1,9 @@
-from flask import Flask, render_template, session, redirect, url_for
+import os
+import sqlite3
+from datetime import date, timedelta
+from statistics import mean
+
+from flask import Flask, flash, g, redirect, render_template, request, session, redirect, url_for
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
