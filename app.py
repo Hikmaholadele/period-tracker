@@ -1,9 +1,4 @@
-import os
-import sqlite3
-from datetime import date, timedelta
-from statistics import mean
-
-from flask import Flask, flash, g, redirect, render_template, request, url_for
+from flask import Flask, render_template, session, redirect, url_for
 
 app = Flask(__name__)
 app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
@@ -105,7 +100,6 @@ def log_period():
         flow = request.form.get("flow", "").strip()
         symptoms = request.form.getlist("symptoms")
         notes = request.form.get("notes", "").strip()
-
         if not start:
             flash("Start date is required.", "error")
         else:
@@ -157,3 +151,20 @@ with app.app_context():
 
 if __name__ == "__main__":
     app.run(debug=True)
+@app.route("/register")
+def register():
+    return render_template("register.html")
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+@app.route("/dashboard")
+def dashboard():
+    return render_template("dashboard.html")
+
+@app.route("/history")
+def history():
+    return render_template("history.html")
+
+app.run(debug=True)
