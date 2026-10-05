@@ -1,5 +1,228 @@
-main{
+:root {
+    --bg: #fff7f9;
+    --surface: #ffffff;
+    --ink: #2b1b22;
+    --muted: #7c6470;
+    --accent: #c2185b;
+    --accent-soft: #fde7ef;
+    --border: #f0d3de;
+    --error: #b3261e;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 300 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+
+.page {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 2rem 1.25rem 4rem;
+}
+
+h1 {
+    font-size: 1.6rem;
+    margin: 0 0 0.75rem;
+}
+
+h2 {
+    font-size: 1.05rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin: 2rem 0 0.75rem;
+}
+
+nav {
+    margin-bottom: 1.5rem;
+}
+
+a {
+    color: var(--accent);
+}
+
+.card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+}
+
+.period-form {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.field {
+    display: grid;
+    gap: 0.4rem;
+    border: 0;
+    padding: 0;
+    margin: 0;
+}
+
+.field label,
+.field legend {
+    font-weight: 500;
+    font-size: 0.85rem;
+    padding: 0;
+}
+
+.hint {
+    color: var(--muted);
     font-weight: 300;
-    font-size: large;
-    color: red;
+}
+
+input[type="date"],
+textarea {
+    font: inherit;
+    color: inherit;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    width: 100%;
+}
+
+input[type="date"]:focus,
+textarea:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+}
+
+.chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+fieldset .chips {
+    margin-top: 0.4rem;
+}
+
+.chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.75rem;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: var(--surface);
+    cursor: pointer;
+    font-weight: 300;
+    font-size: 0.9rem;
+}
+
+.chip input {
+    accent-color: var(--accent);
+    margin: 0;
+}
+
+.chip:has(input:checked) {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.btn {
+    display: inline-block;
+    justify-self: start;
+    font: inherit;
+    font-weight: 500;
+    padding: 0.6rem 1.4rem;
+    border: 0;
+    border-radius: 999px;
+    background: var(--accent);
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.btn:hover {
+    background: #a31450;
+}
+
+.flashes {
+    list-style: none;
+    margin: 0 0 1.25rem;
+    padding: 0;
+    display: grid;
+    gap: 0.5rem;
+}
+
+.flash {
+    padding: 0.65rem 0.9rem;
+    border-radius: 8px;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.flash-error {
+    background: #fdecea;
+    color: var(--error);
+}
+
+.stats {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+}
+
+.stats li {
+    flex: 1 1 160px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 0.9rem 1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.stat-value {
+    display: block;
+    font-size: 1.35rem;
+    font-weight: 400;
+    color: var(--ink);
+}
+
+.empty {
+    color: var(--muted);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    font-size: 0.9rem;
+}
+
+th,
+td {
+    text-align: left;
+    padding: 0.6rem 0.8rem;
+    border-bottom: 1px solid var(--border);
+}
+
+th {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    font-weight: 500;
+}
+
+tbody tr:last-child td {
+    border-bottom: 0;
 }
