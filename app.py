@@ -1,15 +1,53 @@
 import os
 import sqlite3
-from datetime import date, timedelta
-from statistics import mean
+from datetime import date, datetime, timedelta
+from functools import wraps
 
-from flask import Flask, flash, g, redirect, render_template, request, session, redirect, url_for
+from flask import (
+    Flask,
+    flash,
+    g,
+    redirect,
+    render_template,
+    request,
+    session,
+    url_for,
+)
+
+from werkzeug.security import (
+    check_password_hash,
+    generate_password_hash,
+)
+
+
+# ============================================================
+# APPLICATION CONFIGURATION
+# ============================================================
 
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-change-me")
 
-DB_PATH = os.environ.get("DATABASE", "periods.db")
-FLOW_LEVELS = ["spotting", "light", "medium", "heavy"]
+app.config["SECRET_KEY"] = os.environ.get(
+    "SECRET_KEY",
+    "dev-secret-change-me",
+)
+
+app.config["DATABASE"] = os.environ.get(
+    "DATABASE",
+    "periods.db",
+)
+
+
+# ============================================================
+# APPLICATION CONSTANTS
+# ============================================================
+
+FLOW_LEVELS = [
+    "spotting",
+    "light",
+    "medium",
+    "heavy",
+]
+
 SYMPTOMS = [
     "cramps",
     "headache",
@@ -21,155 +59,284 @@ SYMPTOMS = [
     "backache",
 ]
 
+DEFAULT_CYCLE_LENGTH = 28
+DEFAULT_PERIOD_LENGTH = 5
+
+
+# ============================================================
+# DATABASE
+# ============================================================
 
 def get_db():
+    """Return the current database connection."""
+
     if "db" not in g:
-        g.db = sqlite3.connect(DB_PATH)
+        g.db = sqlite3.connect(app.config["DATABASE"])
         g.db.row_factory = sqlite3.Row
+
     return g.db
 
 
 @app.teardown_appcontext
-def close_db(_exc):
+def close_db(exception=None):
+    """Close the database connection after each request."""
+
     db = g.pop("db", None)
+
     if db is not None:
         db.close()
 
 
 def init_db():
+    """Create the application database tables."""
+
     db = get_db()
-    db.execute(
+
+    db.executescript(
         """
+        CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+
         CREATE TABLE IF NOT EXISTS periods (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
-            start_date TEXT NOT NULL,
-            end_date TEXT,
+            user_id INTEGER NOT NULL,
+            start_date DATE NOT NULL,
+            end_date DATE,
             flow TEXT NOT NULL,
-            symptoms TEXT NOT NULL DEFAULT '',
-            notes TEXT NOT NULL DEFAULT ''
-        )
+            symptoms TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users (id)
+                ON DELETE CASCADE
+        );
+
+        CREATE TABLE IF NOT EXISTS user_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            average_cycle_length INTEGER DEFAULT 28,
+            average_period_length INTEGER DEFAULT 5,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+
+            FOREIGN KEY (user_id)
+                REFERENCES users (id)
+                ON DELETE CASCADE
+        );
         """
     )
+
     db.commit()
 
 
-def get_periods():
-    rows = get_db().execute(
-        "SELECT * FROM periods ORDER BY start_date DESC, id DESC"
-    ).fetchall()
-    return [dict(row) for row in rows]
+# ============================================================
+# AUTHENTICATION HELPERS
+# ============================================================
+
+def login_required(view):
+    """Require the user to be signed in."""
+
+    @wraps(view)
+    def wrapped_view(**kwargs):
+        if "user_id" not in session:
+            flash("Please sign in to continue.", "error")
+            return redirect(url_for("signin"))
+
+        return view(**kwargs)
+
+    return wrapped_view
 
 
-def get_insights():
-    periods = get_periods()
-    starts = sorted(date.fromisoformat(p["start_date"]) for p in periods)
+def get_current_user():
+    """Return the currently signed-in user."""
 
-    cycle_lengths = [
-        (later - earlier).days for earlier, later in zip(starts, starts[1:])
-    ][-6:]
+    user_id = session.get("user_id")
 
-    period_lengths = [
-        (
-            date.fromisoformat(p["end_date"]) - date.fromisoformat(p["start_date"])
-        ).days
-        + 1
-        for p in periods
-        if p["end_date"]
-    ][-6:]
+    if user_id is None:
+        return None
 
-    avg_cycle = round(mean(cycle_lengths)) if cycle_lengths else 28
-    avg_period = round(mean(period_lengths)) if period_lengths else 5
-    next_start = starts[-1] + timedelta(days=avg_cycle) if starts else None
+    return get_db().execute(
+        """
+        SELECT *
+        FROM users
+        WHERE id = ?
+        """,
+        (user_id,),
+    ).fetchone()
 
-    return {
-        "avg_cycle": avg_cycle,
-        "avg_period": avg_period,
-        "cycles_logged": len(cycle_lengths),
-        "last_start": starts[-1] if starts else None,
-        "next_start": next_start,
-    }
 
+# ============================================================
+# CYCLE CALCULATIONS
+# ============================================================
+
+def calculate_cycle_length(previous_period, current_period):
+    """Calculate the number of days between two period starts."""
+
+    if not previous_period or not current_period:
+        return None
+
+    previous_start = date.fromisoformat(previous_period["start_date"])
+    current_start = date.fromisoformat(current_period["start_date"])
+
+    return (current_start - previous_start).days
+
+
+def calculate_average_cycle(periods):
+    """Calculate the user's average cycle length."""
+
+    if len(periods) < 2:
+        return DEFAULT_CYCLE_LENGTH
+
+    cycle_lengths = []
+
+    for index in range(1, len(periods)):
+        current = periods[index - 1]
+        previous = periods[index]
+
+        length = calculate_cycle_length(previous, current)
+
+        if length and 15 <= length <= 60:
+            cycle_lengths.append(length)
+
+    if not cycle_lengths:
+        return DEFAULT_CYCLE_LENGTH
+
+    return round(sum(cycle_lengths) / len(cycle_lengths))
+
+
+def calculate_period_length(period):
+    """Calculate the duration of a period."""
+
+    if not period or not period["end_date"]:
+        return None
+
+    start = date.fromisoformat(period["start_date"])
+    end = date.fromisoformat(period["end_date"])
+
+    return (end - start).days + 1
+
+
+def calculate_average_period_length(periods):
+    """Calculate the user's average period length."""
+
+    lengths = []
+
+    for period in periods:
+        length = calculate_period_length(period)
+
+        if length and 1 <= length <= 15:
+            lengths.append(length)
+
+    if not lengths:
+        return DEFAULT_PERIOD_LENGTH
+
+    return round(sum(lengths) / len(lengths))
+
+
+def predict_next_period(last_period, average_cycle_length):
+    """Predict the next period start date."""
+
+    if not last_period:
+        return None
+
+    last_start = date.fromisoformat(last_period["start_date"])
+
+    return last_start + timedelta(days=average_cycle_length)
+
+
+def calculate_cycle_day(last_period):
+    """Calculate the current cycle day."""
+
+    if not last_period:
+        return None
+
+    start = date.fromisoformat(last_period["start_date"])
+
+    return (date.today() - start).days + 1
+
+
+# ============================================================
+# PUBLIC ROUTES
+# ============================================================
 
 @app.route("/")
-def home():
-    return render_template(
-        "index.html", periods=get_periods(), insights=get_insights()
-    )
+def landing():
+    """Landing page."""
 
+    return render_template("landing.html")
+
+
+# ============================================================
+# AUTHENTICATION ROUTES
+# ============================================================
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    """Register a new user."""
+
+    return render_template("register.html")
+
+
+@app.route("/signin", methods=["GET", "POST"])
+def signin():
+    """Sign in an existing user."""
+
+    return render_template("signin.html")
+
+
+@app.post("/logout")
+@login_required
+def logout():
+    """Sign the current user out."""
+
+    session.clear()
+
+    return redirect(url_for("landing"))
+
+
+# ============================================================
+# DASHBOARD
+# ============================================================
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    """Display the user's cycle dashboard."""
+
+    return render_template("dashboard.html")
+
+
+# ============================================================
+# PERIOD ROUTES
+# ============================================================
 
 @app.route("/log-period", methods=["GET", "POST"])
+@login_required
 def log_period():
-    if request.method == "POST":
-        start = request.form.get("start_date", "").strip()
-        end = request.form.get("end_date", "").strip()
-        flow = request.form.get("flow", "").strip()
-        symptoms = request.form.getlist("symptoms")
-        notes = request.form.get("notes", "").strip()
-        if not start:
-            flash("Start date is required.", "error")
-        else:
-            valid = True
-            try:
-                start_date = date.fromisoformat(start)
-                end_date = date.fromisoformat(end) if end else None
-            except ValueError:
-                valid = False
-                flash("Dates must be in YYYY-MM-DD format.", "error")
+    """Log a new period."""
 
-            if valid and end_date and end_date < start_date:
-                valid = False
-                flash("End date cannot be before the start date.", "error")
-            if valid and flow not in FLOW_LEVELS:
-                valid = False
-                flash("Pick a valid flow level.", "error")
+    return render_template("log_period.html")
 
-            if valid:
-                db = get_db()
-                db.execute(
-                    """
-                    INSERT INTO periods (start_date, end_date, flow, symptoms, notes)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                    (
-                        start_date.isoformat(),
-                        end_date.isoformat() if end_date else "",
-                        flow,
-                        ", ".join(sorted(set(symptoms))),
-                        notes,
-                    ),
-                )
-                db.commit()
-                flash("Period logged.", "success")
-                return redirect(url_for("log_period"))
 
-    return render_template(
-        "log_period.html",
-        symptoms=SYMPTOMS,
-        flow_levels=FLOW_LEVELS,
-        periods=get_periods(),
-        insights=get_insights(),
-    )
+@app.route("/history")
+@login_required
+def history():
+    """Display the user's period history."""
 
+    return render_template("history.html")
+
+
+# ============================================================
+# APPLICATION STARTUP
+# ============================================================
 
 with app.app_context():
     init_db()
 
+
 if __name__ == "__main__":
     app.run(debug=True)
-@app.route("/register")
-def register():
-    return render_template("register.html")
-
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
-@app.route("/dashboard")
-def dashboard():
-    return render_template("dashboard.html")
-
-@app.route("/history")
-def history():
-    return render_template("history.html")
-
-app.run(debug=True)
