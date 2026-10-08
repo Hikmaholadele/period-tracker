@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% block title %}Sign In | Periodly{% endblock %}
+
+{% block content %}
+
+<section class="auth-page">
+
+    <div class="auth-card">
+
+        <div class="auth-header">
+            <span class="auth-icon">🌸</span>
+
+            <h1>Welcome back</h1>
+
+            <p>
+                Sign in to continue tracking your cycle.
+            </p>
+        </div>
+
+        <form method="POST" class="auth-form">
+
+            <div class="form-group">
+                <label for="email">Email address</label>
+
+                <input
+                    type="email"
+                    id="email"
+                    name="email"
+                    placeholder="you@example.com"
+                    value="{{ request.form.get('email', '') }}"
+                    autocomplete="email"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+
+                <input
+                    type="password"
+                    id="password"
+                    name="password"
+                    placeholder="Enter your password"
+                    autocomplete="current-password"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="primary-button">
+                Sign In
+            </button>
+
+        </form>
+
+        <p class="auth-footer">
+            Don't have an account?
+            <a href="{{ url_for('register') }}">Create one</a>
+        </p>
+
+    </div>
+
+</section>
+
+{% endblock %}

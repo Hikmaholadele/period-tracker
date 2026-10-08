@@ -278,6 +278,109 @@ def landing():
 def register():
     """Register a new user."""
 
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        # Validate name
+        if not name:
+            flash("Please enter your name.", "error")
+            return render_template("register.html")
+
+        # Validate email
+        if not email:
+            flash("Please enter your email address.", "error")
+            return render_template("register.html")
+
+        # Validate password
+        if len(password) < 8:
+            flash(
+                "Password must be at least 8 characters.",
+                "error",
+            )
+            return render_template("register.html")
+
+        # Confirm password
+        if password != confirm_password:
+            flash(
+                "Passwords do not match.",
+                "error",
+            )
+            return render_template("register.html")
+
+        db = get_db()
+
+        # Check whether email already exists
+        existing_user = db.execute(
+            """
+            SELECT id
+            FROM users
+            WHERE email = ?
+            """,
+            (email,),
+        ).fetchone()
+
+        if existing_user:
+            flash(
+                "An account with this email already exists.",
+                "error",
+            )
+            return render_template("register.html")
+
+        # Hash password before storing it
+        password_hash = generate_password_hash(password)
+
+        # Create user
+        cursor = db.execute(
+            """
+            INSERT INTO users (
+                name,
+                email,
+                password_hash
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                name,
+                email,
+                password_hash,
+            ),
+        )
+
+        user_id = cursor.lastrowid
+
+        # Create default user settings
+        db.execute(
+            """
+            INSERT INTO user_settings (
+                user_id,
+                average_cycle_length,
+                average_period_length
+            )
+            VALUES (?, ?, ?)
+            """,
+            (
+                user_id,
+                DEFAULT_CYCLE_LENGTH,
+                DEFAULT_PERIOD_LENGTH,
+            ),
+        )
+
+        db.commit()
+
+        # Log the user in
+        session.clear()
+        session["user_id"] = user_id
+
+        flash(
+            "Your account has been created successfully!",
+            "success",
+        )
+
+        return redirect(url_for("dashboard"))
+
     return render_template("register.html")
 
 
@@ -285,8 +388,57 @@ def register():
 def signin():
     """Sign in an existing user."""
 
-    return render_template("signin.html")
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
 
+        if not email or not password:
+            flash(
+                "Please enter your email and password.",
+                "error",
+            )
+            return render_template("signin.html")
+
+        db = get_db()
+
+        user = db.execute(
+            """
+            SELECT *
+            FROM users
+            WHERE email = ?
+            """,
+            (email,),
+        ).fetchone()
+
+        if user is None:
+            flash(
+                "Incorrect email or password.",
+                "error",
+            )
+            return render_template("signin.html")
+
+        if not check_password_hash(
+            user["password_hash"],
+            password,
+        ):
+            flash(
+                "Incorrect email or password.",
+                "error",
+            )
+            return render_template("signin.html")
+
+        # Authentication successful
+        session.clear()
+        session["user_id"] = user["id"]
+
+        flash(
+            f"Welcome back, {user['name']}!",
+            "success",
+        )
+
+        return redirect(url_for("dashboard"))
+
+    return render_template("signin.html")
 
 @app.post("/logout")
 @login_required
@@ -307,7 +459,12 @@ def logout():
 def dashboard():
     """Display the user's cycle dashboard."""
 
-    return render_template("dashboard.html")
+    user = get_current_user()
+
+    return render_template(
+        "dashboard.html",
+        user=user,
+    )
 
 
 # ============================================================
