@@ -1,0 +1,236 @@
+{% extends "base.html" %}
+
+{% block title %}Log Period | Periodly{% endblock %}
+
+{% block content %}
+
+<section class="log-period-page">
+
+    <div class="log-period-header">
+
+        <a
+            href="{{ url_for('dashboard') }}"
+            class="back-link"
+        >
+            ← Dashboard
+        </a>
+
+        <p class="dashboard-eyebrow">
+            CYCLE TRACKING
+        </p>
+
+        <h1>Log your period</h1>
+
+        <p>
+            Record your period details to help Periodly understand
+            your cycle and provide better estimates.
+        </p>
+
+    </div>
+
+
+    <form
+        method="POST"
+        class="log-period-form"
+    >
+
+        <!-- Dates -->
+
+        <div class="form-section">
+
+            <div class="form-section-heading">
+
+                <span class="section-number">
+                    01
+                </span>
+
+                <div>
+                    <h2>When was your period?</h2>
+
+                    <p>
+                        Tell us when your period started and ended.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="date-grid">
+
+                <div class="form-group">
+
+                    <label for="start_date">
+                        Start date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="start_date"
+                        name="start_date"
+                        value="{{ request.form.get('start_date', '') }}"
+                        required
+                    >
+
+                    <span class="input-help">
+                        The first day of your period
+                    </span>
+
+                </div>
+
+
+                <div class="form-group">
+
+                    <label for="end_date">
+                        End date
+                    </label>
+
+                    <input
+                        type="date"
+                        id="end_date"
+                        name="end_date"
+                        value="{{ request.form.get('end_date', '') }}"
+                    >
+
+                    <span class="input-help">
+                        Leave blank if your period is ongoing
+                    </span>
+
+                </div>
+
+            </div>
+
+        </div>
+
+
+        <!-- Flow -->
+
+        <div class="form-section">
+
+            <div class="form-section-heading">
+
+                <span class="section-number">
+                    02
+                </span>
+
+                <div>
+                    <h2>How was your flow?</h2>
+
+                    <p>
+                        Choose the flow level that best describes your period.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="flow-options">
+
+                {% for flow in flow_levels %}
+
+                <label class="flow-option">
+
+                    <input
+                        type="radio"
+                        name="flow"
+                        value="{{ flow }}"
+                        {% if request.form.get('flow') == flow %}
+                            checked
+                        {% endif %}
+                        required
+                    >
+
+                    <span class="flow-option-content">
+
+                        <span class="flow-dot flow-{{ flow }}"></span>
+
+                        <span class="flow-name">
+                            {{ flow|capitalize }}
+                        </span>
+
+                    </span>
+
+                </label>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- Symptoms -->
+
+        <div class="form-section">
+
+            <div class="form-section-heading">
+
+                <span class="section-number">
+                    03
+                </span>
+
+                <div>
+                    <h2>Any symptoms?</h2>
+
+                    <p>
+                        Select everything you've experienced.
+                    </p>
+                </div>
+
+            </div>
+
+
+            <div class="symptom-grid">
+
+                {% for symptom in symptoms %}
+
+                <label class="symptom-option">
+
+                    <input
+                        type="checkbox"
+                        name="symptoms"
+                        value="{{ symptom }}"
+                        {% if symptom in request.form.getlist('symptoms') %}
+                            checked
+                        {% endif %}
+                    >
+
+                    <span class="symptom-check"></span>
+
+                    <span>
+                        {{ symptom|capitalize }}
+                    </span>
+
+                </label>
+
+                {% endfor %}
+
+            </div>
+
+        </div>
+
+
+        <!-- Submit -->
+
+        <div class="log-period-actions">
+
+            <a
+                href="{{ url_for('dashboard') }}"
+                class="secondary-button"
+            >
+                Cancel
+            </a>
+
+            <button
+                type="submit"
+                class="primary-button"
+            >
+                Save Period
+            </button>
+
+        </div>
+
+    </form>
+
+</section>
+
+{% endblock %}
