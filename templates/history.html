@@ -1,0 +1,169 @@
+{% extends "base.html" %}
+
+{% block title %}Period History | Periodly{% endblock %}
+
+{% block content %}
+<section class="history-page">
+
+    <div class="history-page-header">
+        <div>
+            <p class="dashboard-eyebrow">YOUR CYCLE JOURNAL</p>
+            <h1>Period History</h1>
+            <p class="history-subtitle">
+                Keep track of your periods and review your cycle patterns.
+            </p>
+        </div>
+
+        <a href="{{ url_for('log_period') }}" class="primary-button">
+            + Log a Period
+        </a>
+    </div>
+
+    <div class="history-summary">
+        <div class="history-summary-card">
+            <span class="history-summary-icon">♡</span>
+            <div>
+                <p>Total Records</p>
+                <h2>{{ history_periods|length }}</h2>
+            </div>
+        </div>
+
+        <div class="history-summary-card">
+            <span class="history-summary-icon">✿</span>
+            <div>
+                <p>Tracking Progress</p>
+                <h2>
+                    {% if history_periods|length == 0 %}
+                        Get started
+                    {% elif history_periods|length == 1 %}
+                        1 period logged
+                    {% else %}
+                        {{ history_periods|length }} periods logged
+                    {% endif %}
+                </h2>
+            </div>
+        </div>
+    </div>
+
+    <div class="history-section-heading">
+        <div>
+            <h2>Your records</h2>
+            <p>Most recent periods appear first.</p>
+        </div>
+    </div>
+
+    {% if history_periods %}
+        <div class="history-list">
+
+            {% for item in history_periods %}
+                {% set period = item["period"] %}
+
+                <article class="history-card">
+
+                    <div class="history-card-top">
+                        <div class="history-date-icon">♡</div>
+
+                        <div class="history-card-heading">
+                            <h3>
+                                {{ period['start_date']|date if false else period['start_date'] }}
+                            </h3>
+
+                            <p>
+                                {% if period['end_date'] %}
+                                    {{ period['start_date'] }} — {{ period['end_date'] }}
+                                {% else %}
+                                    Started {{ period['start_date'] }} · Ongoing
+                                {% endif %}
+                            </p>
+                        </div>
+
+                        <span class="flow-badge flow-badge-{{ period['flow']|lower }}">
+                            {{ period['flow']|capitalize if period['flow'] else 'Not specified' }}
+                        </span>
+                    </div>
+
+                    <div class="history-card-content">
+
+                        <div class="history-detail">
+                            <span class="history-detail-label">Duration</span>
+                            <span class="history-detail-value">
+                                {% if period['end_date'] %}
+                                    {{ item.get('duration', '—') }}
+                                    {% if item.get('duration') == 1 %}day{% else %}days{% endif %}
+                                {% else %}
+                                    Ongoing
+                                {% endif %}
+                            </span>
+                        </div>
+
+                        <div class="history-detail">
+                            <span class="history-detail-label">Flow level</span>
+                            <span class="history-detail-value">
+                                {{ period['flow']|capitalize if period['flow'] else 'Not specified' }}
+                            </span>
+                        </div>
+
+                        <div class="history-symptoms">
+                            <span class="history-detail-label">Symptoms</span>
+
+                            {% if period['symptoms'] %}
+                                <div class="history-symptom-list">
+                                    {% for symptom in period['symptoms'].split(',') %}
+                                        <span class="history-symptom">
+                                            {{ symptom.strip()|capitalize }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <p class="history-no-symptoms">
+                                    No symptoms recorded.
+                                </p>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                    <div class="history-actions">
+                        <a
+                            href="{{ url_for('edit_period', period_id=period['id']) }}"
+                            class="secondary-button"
+                        >
+                            Edit
+                        </a>
+
+                        <form
+                            method="POST"
+                            action="{{ url_for('delete_period', period_id=period['id']) }}"
+                            onsubmit="return confirm('Are you sure you want to permanently delete this period record?');"
+                        >
+                            <button type="submit" class="delete-button">
+                                Delete
+                            </button>
+                        </form>
+                    </div>
+
+                </article>
+
+            {% endfor %}
+
+        </div>
+
+    {% else %}
+
+        <div class="history-empty-state">
+            <div class="history-empty-icon">♡</div>
+            <h2>Your journey starts here</h2>
+            <p>
+                You haven't logged a period yet. Start tracking your cycle
+                to build your personal history.
+            </p>
+
+            <a href="{{ url_for('log_period') }}" class="primary-button">
+                Log Your First Period
+            </a>
+        </div>
+
+    {% endif %}
+
+</section>
+{% endblock %}
